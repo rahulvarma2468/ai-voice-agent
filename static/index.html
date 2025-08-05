@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI TTS Voice Agent & Echo Bot</title>
+<style>
+  body {
+    min-height: 100vh;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background:
+      linear-gradient(120deg, rgba(25,8,49,0.72) 0%, rgba(34,28,62,0.70) 100%),
+      url('background.jpg') no-repeat center center fixed;
+    background-size: cover;
+    color: #fafbfc;
+  }
+  .glass-card {
+    background: rgba(24, 19, 50, 0.65);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 26px;
+    box-shadow: 0 4px 64px 0 #0ff1ff77, 0 1.5px 13px #971be930;
+    padding: 2.8rem 1.9rem 2rem 1.9rem;
+    max-width: 430px;
+    width: 95vw;
+    margin: 24px auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    position: relative;
+    border: 1.5px solid rgba(52, 5, 99, 0.16);
+  }
+  .greeting {
+    font-size: 1.17rem;
+    font-weight: 500;
+    color: #7de7f7;
+    text-shadow: 0 2px 10px #3de0ff50;
+    margin: 0;
+    text-align: center;
+    letter-spacing: 0.03em;
+  }
+  h2 {
+    text-align: center;
+    margin-bottom: 1.3rem;
+    color: #e7b8fe;
+    font-weight: 700;
+    font-size: 1.42rem;
+    letter-spacing: .7px;
+    text-shadow: 0 2px 12px #c472fc99;
+  }
+  .input-row {
+    display: flex;
+    gap: 0.7rem;
+    align-items: stretch;
+  }
+  input[type="text"] {
+    flex: 1;
+    font-size: 1rem;
+    border: 1.5px solid #5935ba;
+    padding: 0.9rem 1rem;
+    border-radius: 14px;
+    outline: none;
+    background: rgba(44,42,72,0.32);
+    color: #f6f5ff;
+    transition: border 0.18s, box-shadow 0.22s;
+    box-shadow: 0 1px 7px 0 #a979e488;
+  }
+  input[type="text"]:focus {
+    border: 2.2px solid #5cf8ea;
+    box-shadow: 0 0 7px 2px #00ffd683;
+    background: rgba(44,42,72,0.48);
+  }
+  button {
+    background: linear-gradient(90deg, #16c7ff 30%, #a460f9 90%);
+    color: #fff;
+    border: none;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0 1.2rem;
+    border-radius: 12px;
+    min-width: 82px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px 0 #0eeff17a;
+    transition: background 0.26s, transform 0.15s, box-shadow 0.22s;
+    position: relative;
+  }
+  button:active, button:focus-visible {
+    background: #5510c8;
+    transform: scale(0.97);
+    outline: 2px solid #df59ff;
+  }
+  button:disabled {
+    background: #747474;
+    color: #d0d0d0;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  .status {
+    text-align: center;
+    min-height: 1.2em;
+    font-weight: 500;
+    font-size: 1.01rem;
+  }
+  .status.error {
+    color: #ff91b8;
+    background: rgba(255,94,136,0.14);
+    border-radius: 5px;
+    padding: 2px 11px;
+    display: inline-block;
+  }
+  .status.success {
+    color: #59ecc5;
+    background: rgba(37, 246, 174,0.15);
+    border-radius: 5px;
+    padding: 2px 11px;
+    display: inline-block;
+  }
+  .spinner {
+    border: 4px solid #252141;
+    border-top: 4px solid #43eaf7;
+    border-radius: 50%;
+    width: 32px; height: 32px;
+    animation: spin 1.1s linear infinite;
+    margin: 0.6rem auto 0 auto;
+    display: none;
+  }
+  .spinner.active { display: block;}
+  @keyframes spin {
+    0% {transform: rotate(0deg);}
+    100% {transform: rotate(360deg);}
+  }
+  .audio-controls, .echo-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: .4rem;
+  }
+  audio {
+    width: 100%;
+    outline: none;
+    background: #27095d99;
+    border-radius: 9px;
+    margin-top: 0.3rem;
+  }
+  .echo-section {
+    padding: 1.25rem 0.7rem 0.7rem 0.7rem;
+    background: rgba(38, 9, 54, 0.28);
+    border: 1px solid #532187;
+    border-radius: 15px;
+    margin-top: 1.2rem;
+    box-shadow: 0 2px 15px #12e3fc15;
+  }
+  .echo-section h1 {
+    font-size: 1.08rem;
+    margin: 0 0 0.8rem 0;
+    color: #60e6eb;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 9px #849aff42;
+    text-align: center;
+  }
+  .echo-btn-row {
+    display: flex;
+    gap: 0.6rem;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+  }
+  .echo-btn-row button {
+    background: linear-gradient(90deg, #fd41e1 40%, #41e8fd 100%);
+    color: #fff;
+    font-size: 1rem;
+    border-radius: 11px;
+    padding: 0.65rem 1.2rem;
+  }
+  .echo-btn-row button:active, .echo-btn-row button:focus {
+    background: #0fb3ec;
+    outline: 2px solid #f647ec;
+  }
+  @media (max-width: 650px) {
+    .glass-card {
+      padding: 1.2rem 0.35rem 1.2rem 0.35rem;
+    }
+    h2 {
+      font-size: 1.11rem;
+    }
+    .echo-section h1 {
+      font-size: 0.99rem;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="glass-card" role="main" aria-label="Voice Agent and Echo Bot">
+  <div class="greeting" id="greeting"></div>
+  <h2>AI TTS Voice Agent</h2>
+  <div class="input-row">
+    <input id="tts-input" type="text" aria-label="Text to speak" placeholder="Type something to speak..." autocomplete="off" maxlength="240"/>
+    <button id="tts-btn" onclick="generateAudio()" aria-label="Generate speech (Ctrl+Enter)" title="Speak (Ctrl+Enter)">Speak</button>
+  </div>
+  <div id="status" class="status"></div>
+  <div class="spinner" id="spinner"></div>
+  <div class="audio-controls">
+    <audio id="audio-player" controls hidden aria-label="TTS audio output"></audio>
+  </div>
+  <!-- Echo Bot Section -->
+  <div class="echo-section">
+    <h1>Echo Bot</h1>
+    <div class="echo-btn-row">
+      <button id="start-record" onclick="startRecording()" aria-label="Start voice recording" title="Start voice recording">Start Recording</button>
+      <button id="stop-record" onclick="stopRecording()" disabled aria-label="Stop and playback" title="Stop recording and playback">Stop Recording</button>
+    </div>
+    <div id="echo-status" class="status"></div>
+    <div class="echo-controls">
+      <audio id="echo-audio" controls hidden aria-label="Echo playback"></audio>
+    </div>
+  </div>
+</div>
+<script>
+  // Dynamic greeting message
+  const greetingMsg = () => {
+    const now = new Date();
+    const hr = now.getHours();
+    if (hr < 12) return "Good morning, Voice Explorer! 🌞";
+    if (hr < 18) return "Good afternoon, Voice Explorer! ☀️";
+    return "Good evening, Voice Explorer! 🌙";
+  };
+  document.getElementById('greeting').textContent = greetingMsg();
+
+  // TTS controller elements
+  const input = document.getElementById('tts-input');
+  const btn = document.getElementById('tts-btn');
+  const status = document.getElementById('status');
+  const audio = document.getElementById('audio-player');
+  const spinner = document.getElementById('spinner');
+
+  function setLoading(v) {
+    spinner.classList.toggle('active', v);
+    btn.disabled = v;
+  }
+
+  async function generateAudio() {
+    const text = input.value.trim();
+    audio.hidden = true;
+    status.textContent = '';
+    status.className = 'status';
+    if (!text) {
+      status.textContent = 'Please enter some text.';
+      status.classList.add('error');
+      return;
+    }
+    setLoading(true);
+    status.textContent = 'Generating audio...';
+    try {
+      const response = await fetch('/generate-audio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      const data = await response.json();
+      if (data.audioUrl) {
+        audio.src = data.audioUrl;
+        audio.hidden = false;
+        audio.load();
+        audio.play();
+        status.textContent = 'Audio ready!';
+        status.classList.add('success');
+      } else {
+        status.textContent = 'Sorry, failed to generate an audio URL.';
+        status.classList.add('error');
+      }
+    } catch (err) {
+      status.textContent = 'Network or server error.';
+      status.classList.add('error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Keyboard shortcuts: Enter and Ctrl+Enter to speak
+  input.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      generateAudio();
+    }
+    if (e.key === 'Enter' && !e.ctrlKey) {
+      generateAudio();
+    }
+  });
+  input.addEventListener('input', () => {
+    status.textContent = '';
+    status.className = 'status';
+    audio.hidden = true;
+    audio.pause();
+    audio.currentTime = 0;
+  });
+
+  // Echo Bot recording
+  let mediaRecorder, audioChunks = [];
+  const startBtn = document.getElementById('start-record');
+  const stopBtn = document.getElementById('stop-record');
+  const echoStatus = document.getElementById('echo-status');
+  const echoAudio = document.getElementById('echo-audio');
+
+  function startRecording() {
+    echoStatus.textContent = '';
+    echoStatus.className = 'status';
+    echoAudio.hidden = true;
+    echoAudio.src = '';
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      echoStatus.textContent = "Your browser doesn't support audio recording.";
+      echoStatus.classList.add('error');
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        echoAudio.src = audioUrl;
+        echoAudio.hidden = false;
+        echoAudio.load();
+        echoAudio.play();
+        echoStatus.textContent = "Playback ready!";
+        echoStatus.classList.add('success');
+      };
+      mediaRecorder.start();
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      echoStatus.textContent = "Recording...";
+      echoStatus.classList.remove('error','success');
+    }).catch(err => {
+      echoStatus.textContent = "Microphone access denied.";
+      echoStatus.classList.add('error');
+    });
+  }
+
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state === "recording") {
+      mediaRecorder.stop();
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      echoStatus.textContent = "Processing...";
+    }
+  }
+</script>
+</body>
+</html>
