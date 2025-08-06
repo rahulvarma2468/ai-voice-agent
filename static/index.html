@@ -230,7 +230,7 @@
   };
   document.getElementById('greeting').textContent = greetingMsg();
 
-  // TTS controller elements
+  // TTS Section
   const input = document.getElementById('tts-input');
   const btn = document.getElementById('tts-btn');
   const status = document.getElementById('status');
@@ -297,7 +297,7 @@
     audio.currentTime = 0;
   });
 
-  // Echo Bot recording
+  // Echo Bot recording + upload
   let mediaRecorder, audioChunks = [];
   const startBtn = document.getElementById('start-record');
   const stopBtn = document.getElementById('stop-record');
@@ -321,12 +321,40 @@
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
         const audioUrl = URL.createObjectURL(audioBlob);
+
+        // Playback
         echoAudio.src = audioUrl;
         echoAudio.hidden = false;
         echoAudio.load();
         echoAudio.play();
-        echoStatus.textContent = "Playback ready!";
-        echoStatus.classList.add('success');
+        echoStatus.textContent = "Uploading...";
+        echoStatus.classList.remove('success', 'error');
+
+        // Uploading as file to the backend
+        const formData = new FormData();
+        const fileName = `echo_${Date.now()}.webm`;
+        formData.append('file', audioBlob, fileName);
+        fetch('/upload-audio', {
+          method: 'POST',
+          body: formData
+        })
+        .then(r => r.json())
+        .then(res => {
+          if (res.filename) {
+            echoStatus.textContent = `Uploaded: ${res.filename} (${res.content_type}, ${res.size} bytes)`;
+            echoStatus.classList.remove('error');
+            echoStatus.classList.add('success');
+          } else {
+            echoStatus.textContent = "Upload failed!";
+            echoStatus.classList.remove('success');
+            echoStatus.classList.add('error');
+          }
+        })
+        .catch(e => {
+          echoStatus.textContent = "Upload failed!";
+          echoStatus.classList.remove('success');
+          echoStatus.classList.add('error');
+        });
       };
       mediaRecorder.start();
       startBtn.disabled = true;
@@ -344,7 +372,7 @@
       mediaRecorder.stop();
       startBtn.disabled = false;
       stopBtn.disabled = true;
-      echoStatus.textContent = "Processing...";
+      echoStatus.textContent = "Processing & uploading...";
     }
   }
 </script>
