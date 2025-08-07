@@ -214,6 +214,7 @@
       <button id="stop-record" onclick="stopRecording()" disabled aria-label="Stop and playback" title="Stop recording and playback">Stop Recording</button>
     </div>
     <div id="echo-status" class="status"></div>
+    <div id="echo-transcript" class="status"></div>
     <div class="echo-controls">
       <audio id="echo-audio" controls hidden aria-label="Echo playback"></audio>
     </div>
@@ -297,16 +298,18 @@
     audio.currentTime = 0;
   });
 
-  // Echo Bot recording + upload
+  // Echo Bot: Record + transcribe
   let mediaRecorder, audioChunks = [];
   const startBtn = document.getElementById('start-record');
   const stopBtn = document.getElementById('stop-record');
   const echoStatus = document.getElementById('echo-status');
   const echoAudio = document.getElementById('echo-audio');
+  const echoTranscript = document.getElementById('echo-transcript');
 
   function startRecording() {
     echoStatus.textContent = '';
     echoStatus.className = 'status';
+    echoTranscript.textContent = '';
     echoAudio.hidden = true;
     echoAudio.src = '';
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -327,33 +330,40 @@
         echoAudio.hidden = false;
         echoAudio.load();
         echoAudio.play();
-        echoStatus.textContent = "Uploading...";
-        echoStatus.classList.remove('success', 'error');
 
-        // Uploading as file to the backend
+        echoStatus.textContent = "Transcribing...";
+        echoStatus.classList.remove('success', 'error');
+        echoTranscript.textContent = '';
+
+        // Send to server for transcription
         const formData = new FormData();
         const fileName = `echo_${Date.now()}.webm`;
         formData.append('file', audioBlob, fileName);
-        fetch('/upload-audio', {
+        fetch('/transcribe/file', {
           method: 'POST',
           body: formData
         })
         .then(r => r.json())
         .then(res => {
-          if (res.filename) {
-            echoStatus.textContent = `Uploaded: ${res.filename} (${res.content_type}, ${res.size} bytes)`;
+          if (res.transcript !== undefined) {
+            echoTranscript.textContent = `Transcription: "${res.transcript}"`;
+            echoStatus.textContent = "Transcribed!";
             echoStatus.classList.remove('error');
             echoStatus.classList.add('success');
+            echoTranscript.classList.remove('error');
+            echoTranscript.classList.add('success');
           } else {
-            echoStatus.textContent = "Upload failed!";
+            echoStatus.textContent = "Transcription failed!";
             echoStatus.classList.remove('success');
             echoStatus.classList.add('error');
+            echoTranscript.textContent = '';
           }
         })
         .catch(e => {
-          echoStatus.textContent = "Upload failed!";
+          echoStatus.textContent = "Transcription failed!";
           echoStatus.classList.remove('success');
           echoStatus.classList.add('error');
+          echoTranscript.textContent = '';
         });
       };
       mediaRecorder.start();
@@ -361,6 +371,8 @@
       stopBtn.disabled = false;
       echoStatus.textContent = "Recording...";
       echoStatus.classList.remove('error','success');
+      echoTranscript.textContent = '';
+      echoTranscript.classList.remove('error','success');
     }).catch(err => {
       echoStatus.textContent = "Microphone access denied.";
       echoStatus.classList.add('error');
@@ -372,7 +384,9 @@
       mediaRecorder.stop();
       startBtn.disabled = false;
       stopBtn.disabled = true;
-      echoStatus.textContent = "Processing & uploading...";
+      echoStatus.textContent = "Processing & transcribing...";
+      echoStatus.classList.remove('success');
+      echoStatus.classList.remove('error');
     }
   }
 </script>

@@ -1,17 +1,19 @@
 import os
-from fastapi import FastAPI, HTTPException, UploadFile, File, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import requests
 from dotenv import load_dotenv
 
+import assemblyai as aai  # Make sure to install: pip install assemblyai
+
 load_dotenv()
 
 MURF_API_KEY = os.getenv("MURF_API_KEY")
 MURF_API_URL = "https://api.murf.ai/v1/speech/generate-with-key"
+ASSEMBLYAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY")
 
-# Ensure uploads directory exists
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -30,18 +32,16 @@ def generate_audio(body: TextRequest):
     payload = {
         "voiceId": "en-US-natalie",
         "text": body.text,
-        "style": "Promo",  # Optional: Only if supported for the voice
+        "style": "Promo",  # Optional: Only if supported
         "format": "MP3"
     }
     headers = {
         "api-key": MURF_API_KEY,
         "Content-Type": "application/json"
     }
-
     try:
         response = requests.post(MURF_API_URL, headers=headers, json=payload)
-        print("Murf API Response:", response.status_code, response.text)  # Debug Info
-
+        print("Murf API Response:", response.status_code, response.text)
         if response.status_code == 200:
             result = response.json()
             audio_url = (
@@ -68,3 +68,21 @@ async def upload_audio(file: UploadFile = File(...)):
         "content_type": file.content_type,
         "size": len(content)
     }
+
+# --------------- DAY 6 new endpoint ---------------
+@app.post("/transcribe/file")
+async def transcribe_file(file: UploadFile = File(...)):
+    if not ASSEMBLYAI_API_KEY:
+        raise HTTPException(status_code=500, detail="AssemblyAI API key not set in environment.")
+    # Read the raw audio contents
+    audio_bytes = await file.read()
+    try:
+        aai.settings.api_key = ASSEMBLYAI_API_KEY
+        transcriber = aai.Transcriber()
+        # Call AssemblyAI directly with binary input
+        transcript = transcriber.transcribe(audio_bytes)
+        text = transcript.text if transcript.text else ""
+        return {"transcript": text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {e}")
+
