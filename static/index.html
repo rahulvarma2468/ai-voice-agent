@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>AI TTS Voice Agent & Echo Bot</title>
+<title>AI TTS Voice Agent & Echo Bot v2</title>
 <style>
   body {
     min-height: 100vh;
@@ -25,7 +25,7 @@
     border-radius: 26px;
     box-shadow: 0 4px 64px 0 #0ff1ff77, 0 1.5px 13px #971be930;
     padding: 2.8rem 1.9rem 2rem 1.9rem;
-    max-width: 430px;
+    max-width: 450px;
     width: 95vw;
     margin: 24px auto;
     display: flex;
@@ -48,7 +48,7 @@
     margin-bottom: 1.3rem;
     color: #e7b8fe;
     font-weight: 700;
-    font-size: 1.42rem;
+    font-size: 1.5rem;
     letter-spacing: .7px;
     text-shadow: 0 2px 12px #c472fc99;
   }
@@ -82,7 +82,7 @@
     font-weight: 600;
     padding: 0 1.2rem;
     border-radius: 12px;
-    min-width: 82px;
+    min-width: 90px;
     cursor: pointer;
     box-shadow: 0 2px 8px 0 #0eeff17a;
     transition: background 0.26s, transform 0.15s, box-shadow 0.22s;
@@ -101,22 +101,22 @@
   }
   .status {
     text-align: center;
-    min-height: 1.2em;
+    min-height: 1.3em;
     font-weight: 500;
-    font-size: 1.01rem;
+    font-size: 1.05rem;
   }
   .status.error {
     color: #ff91b8;
     background: rgba(255,94,136,0.14);
     border-radius: 5px;
-    padding: 2px 11px;
+    padding: 4px 14px;
     display: inline-block;
   }
   .status.success {
     color: #59ecc5;
     background: rgba(37, 246, 174,0.15);
     border-radius: 5px;
-    padding: 2px 11px;
+    padding: 4px 14px;
     display: inline-block;
   }
   .spinner {
@@ -155,8 +155,8 @@
     box-shadow: 0 2px 15px #12e3fc15;
   }
   .echo-section h1 {
-    font-size: 1.08rem;
-    margin: 0 0 0.8rem 0;
+    font-size: 1.2rem;
+    margin: 0 0 1rem 0;
     color: #60e6eb;
     font-weight: 700;
     letter-spacing: 0.02em;
@@ -175,51 +175,56 @@
     font-size: 1rem;
     border-radius: 11px;
     padding: 0.65rem 1.2rem;
+    cursor: pointer;
   }
   .echo-btn-row button:active, .echo-btn-row button:focus {
     background: #0fb3ec;
     outline: 2px solid #f647ec;
+  }
+  #echo-transcript {
+    white-space: pre-wrap;
+    font-style: italic;
   }
   @media (max-width: 650px) {
     .glass-card {
       padding: 1.2rem 0.35rem 1.2rem 0.35rem;
     }
     h2 {
-      font-size: 1.11rem;
+      font-size: 1.13rem;
     }
     .echo-section h1 {
-      font-size: 0.99rem;
+      font-size: 1.1rem;
     }
   }
 </style>
 </head>
 <body>
-<div class="glass-card" role="main" aria-label="Voice Agent and Echo Bot">
-  <div class="greeting" id="greeting"></div>
-  <h2>AI TTS Voice Agent</h2>
-  <div class="input-row">
-    <input id="tts-input" type="text" aria-label="Text to speak" placeholder="Type something to speak..." autocomplete="off" maxlength="240"/>
-    <button id="tts-btn" onclick="generateAudio()" aria-label="Generate speech (Ctrl+Enter)" title="Speak (Ctrl+Enter)">Speak</button>
-  </div>
-  <div id="status" class="status"></div>
-  <div class="spinner" id="spinner"></div>
-  <div class="audio-controls">
-    <audio id="audio-player" controls hidden aria-label="TTS audio output"></audio>
-  </div>
-  <!-- Echo Bot Section -->
-  <div class="echo-section">
-    <h1>Echo Bot</h1>
-    <div class="echo-btn-row">
-      <button id="start-record" onclick="startRecording()" aria-label="Start voice recording" title="Start voice recording">Start Recording</button>
-      <button id="stop-record" onclick="stopRecording()" disabled aria-label="Stop and playback" title="Stop recording and playback">Stop Recording</button>
+  <div class="glass-card" role="main" aria-label="Voice Agent and Echo Bot">
+    <div class="greeting" id="greeting"></div>
+    <h2>AI TTS Voice Agent & Echo Bot v2</h2>
+    <div class="input-row">
+      <input id="tts-input" type="text" aria-label="Text to speak" placeholder="Type something to speak..." autocomplete="off" maxlength="240" />
+      <button id="tts-btn" onclick="generateAudio()" aria-label="Generate speech (Ctrl+Enter)" title="Speak (Ctrl+Enter)">Speak</button>
     </div>
-    <div id="echo-status" class="status"></div>
-    <div id="echo-transcript" class="status"></div>
-    <div class="echo-controls">
-      <audio id="echo-audio" controls hidden aria-label="Echo playback"></audio>
+    <div id="status" class="status"></div>
+    <div class="spinner" id="spinner"></div>
+    <div class="audio-controls">
+      <audio id="audio-player" controls hidden aria-label="TTS audio output"></audio>
+    </div>
+    <!-- Echo Bot Section -->
+    <div class="echo-section">
+      <h1>Echo Bot</h1>
+      <div class="echo-btn-row">
+        <button id="start-record" onclick="startRecording()" aria-label="Start voice recording" title="Start voice recording">Start Recording</button>
+        <button id="stop-record" onclick="stopRecording()" disabled aria-label="Stop and playback" title="Stop recording and playback">Stop Recording</button>
+      </div>
+      <div id="echo-status" class="status"></div>
+      <div id="echo-transcript" class="status"></div>
+      <div class="echo-controls">
+        <audio id="echo-audio" controls hidden aria-label="Echo playback"></audio>
+      </div>
     </div>
   </div>
-</div>
 <script>
   // Dynamic greeting message
   const greetingMsg = () => {
@@ -281,7 +286,6 @@
     }
   }
 
-  // Keyboard shortcuts: Enter and Ctrl+Enter to speak
   input.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       generateAudio();
@@ -290,6 +294,7 @@
       generateAudio();
     }
   });
+
   input.addEventListener('input', () => {
     status.textContent = '';
     status.className = 'status';
@@ -298,7 +303,7 @@
     audio.currentTime = 0;
   });
 
-  // Echo Bot: Record + transcribe
+  // Echo Bot v2 (Day 7): record -> transcribe -> Murf TTS -> play Murf voice
   let mediaRecorder, audioChunks = [];
   const startBtn = document.getElementById('start-record');
   const stopBtn = document.getElementById('stop-record');
@@ -323,47 +328,48 @@
       mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        const audioUrl = URL.createObjectURL(audioBlob);
 
-        // Playback
-        echoAudio.src = audioUrl;
-        echoAudio.hidden = false;
-        echoAudio.load();
-        echoAudio.play();
-
-        echoStatus.textContent = "Transcribing...";
+        echoStatus.textContent = "Transcribing and generating Murf voice...";
         echoStatus.classList.remove('success', 'error');
         echoTranscript.textContent = '';
+        echoTranscript.classList.remove('error','success');
 
-        // Send to server for transcription
+        // Send audio to backend for transcription AND Murf voice (Day 7)
         const formData = new FormData();
         const fileName = `echo_${Date.now()}.webm`;
         formData.append('file', audioBlob, fileName);
-        fetch('/transcribe/file', {
+        fetch('/tts/echo', {
           method: 'POST',
           body: formData
         })
         .then(r => r.json())
         .then(res => {
-          if (res.transcript !== undefined) {
-            echoTranscript.textContent = `Transcription: "${res.transcript}"`;
-            echoStatus.textContent = "Transcribed!";
+          if (res.audioUrl) {
+            echoAudio.src = res.audioUrl;
+            echoAudio.hidden = false;
+            echoAudio.load();
+            echoAudio.play();
+            echoStatus.textContent = "Echoed in Murf voice!";
             echoStatus.classList.remove('error');
             echoStatus.classList.add('success');
+            if (res.transcript)
+              echoTranscript.textContent = `Transcript: "${res.transcript}"`;
+            else
+              echoTranscript.textContent = "";
             echoTranscript.classList.remove('error');
             echoTranscript.classList.add('success');
           } else {
-            echoStatus.textContent = "Transcription failed!";
+            echoStatus.textContent = "Failed to generate Murf echo!";
             echoStatus.classList.remove('success');
             echoStatus.classList.add('error');
-            echoTranscript.textContent = '';
+            echoTranscript.textContent = "";
           }
         })
-        .catch(e => {
-          echoStatus.textContent = "Transcription failed!";
+        .catch(() => {
+          echoStatus.textContent = "Echo Murf voice failed!";
           echoStatus.classList.remove('success');
           echoStatus.classList.add('error');
-          echoTranscript.textContent = '';
+          echoTranscript.textContent = "";
         });
       };
       mediaRecorder.start();
@@ -384,9 +390,10 @@
       mediaRecorder.stop();
       startBtn.disabled = false;
       stopBtn.disabled = true;
-      echoStatus.textContent = "Processing & transcribing...";
+      echoStatus.textContent = "Processing with Murf voice...";
       echoStatus.classList.remove('success');
       echoStatus.classList.remove('error');
+      echoTranscript.textContent = "";
     }
   }
 </script>
