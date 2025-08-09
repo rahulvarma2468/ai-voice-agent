@@ -6,17 +6,23 @@ from pydantic import BaseModel
 import requests
 from dotenv import load_dotenv
 
-import assemblyai as aai  # pip install assemblyai
+import assemblyai as aai   # pip install assemblyai
+import google.generativeai as genai  # pip install google-generativeai
 
+# Load environment variables
 load_dotenv()
 
+# API Keys
 MURF_API_KEY = os.getenv("MURF_API_KEY")
 MURF_API_URL = "https://api.murf.ai/v1/speech/generate-with-key"
 ASSEMBLYAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
+# Prepare uploads dir
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+# FastAPI app
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -24,15 +30,21 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 async def root():
     return FileResponse("static/index.html")
 
+# ---------- MODELS ----------
 class TextRequest(BaseModel):
     text: str
+
+class LLMQuery(BaseModel):
+    prompt: str
+
+# ---------- ENDPOINTS ----------
 
 @app.post("/generate-audio")
 def generate_audio(body: TextRequest):
     payload = {
         "voiceId": "en-US-natalie",
         "text": body.text,
-        "style": "Promo",  # Optional: Only if supported
+        "style": "Promo",  # Optional
         "format": "MP3"
     }
     headers = {
@@ -70,6 +82,7 @@ async def upload_audio(file: UploadFile = File(...)):
         "size": len(content)
     }
 
+
 @app.post("/transcribe/file")
 async def transcribe_file(file: UploadFile = File(...)):
     if not ASSEMBLYAI_API_KEY:
@@ -84,10 +97,10 @@ async def transcribe_file(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Transcription failed: {e}")
 
+
 # ----------- DAY 7: Echo Bot v2 endpoint -----------
 @app.post("/tts/echo")
 async def echo_tts(file: UploadFile = File(...)):
-    # 1. Transcribe the uploaded audio (no saving to disk)
     if not ASSEMBLYAI_API_KEY:
         raise HTTPException(status_code=500, detail="AssemblyAI API key not set in environment.")
     try:
@@ -101,12 +114,11 @@ async def echo_tts(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Transcription failed: {e}")
 
-    # 2. Send transcript to Murf for TTS
     if not MURF_API_KEY:
         raise HTTPException(status_code=500, detail="Murf API key not set in environment.")
     try:
         payload = {
-            "voiceId": "en-US-natalie",  # Or set your favorite Murf voice here
+            "voiceId": "en-US-natalie",
             "text": text,
             "format": "MP3"
         }
@@ -132,3 +144,19 @@ async def echo_tts(file: UploadFile = File(...)):
             )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Murf synthesis failed: {e}")
+
+
+# ----------- DAY 8: LLM Query endpoint -----------
+@app.post("/llm/query")
+def llm_query(body: LLMQuery):
+    if not GEMINI_API_KEY:
+        raise HTTPException(status_code=500, detail="Gemini API key not set in environment.")
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel("gemini-1.5-flash")  # Fast & good for short responses
+        response = model.generate_content(body.prompt)
+        return {"response": response.text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"LLM query failed: {e}")
+
+
