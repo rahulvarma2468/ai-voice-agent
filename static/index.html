@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>AI TTS Voice Agent & Echo Bot v2</title>
+<title>AI LLM Voice Agent & Echo Bot v2</title>
 <style>
   body {
     min-height: 100vh;
@@ -201,7 +201,7 @@
 <body>
   <div class="glass-card" role="main" aria-label="Voice Agent and Echo Bot">
     <div class="greeting" id="greeting"></div>
-    <h2>AI TTS Voice Agent & Echo Bot v2</h2>
+    <h2>AI LLM Voice Agent & Echo Bot v2</h2>
     <div class="input-row">
       <input id="tts-input" type="text" aria-label="Text to speak" placeholder="Type something to speak..." autocomplete="off" maxlength="240" />
       <button id="tts-btn" onclick="generateAudio()" aria-label="Generate speech (Ctrl+Enter)" title="Speak (Ctrl+Enter)">Speak</button>
@@ -213,7 +213,7 @@
     </div>
     <!-- Echo Bot Section -->
     <div class="echo-section">
-      <h1>Echo Bot</h1>
+      <h1>AI LLM Voice Bot</h1>
       <div class="echo-btn-row">
         <button id="start-record" onclick="startRecording()" aria-label="Start voice recording" title="Start voice recording">Start Recording</button>
         <button id="stop-record" onclick="stopRecording()" disabled aria-label="Stop and playback" title="Stop recording and playback">Stop Recording</button>
@@ -225,18 +225,18 @@
       </div>
     </div>
   </div>
+
 <script>
-  // Dynamic greeting message
+  // Dynamic greeting
   const greetingMsg = () => {
-    const now = new Date();
-    const hr = now.getHours();
+    const hr = new Date().getHours();
     if (hr < 12) return "Good morning, Voice Explorer! 🌞";
     if (hr < 18) return "Good afternoon, Voice Explorer! ☀️";
     return "Good evening, Voice Explorer! 🌙";
   };
   document.getElementById('greeting').textContent = greetingMsg();
 
-  // TTS Section
+  // TTS section
   const input = document.getElementById('tts-input');
   const btn = document.getElementById('tts-btn');
   const status = document.getElementById('status');
@@ -287,12 +287,8 @@
   }
 
   input.addEventListener('keydown', e => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      generateAudio();
-    }
-    if (e.key === 'Enter' && !e.ctrlKey) {
-      generateAudio();
-    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') generateAudio();
+    if (e.key === 'Enter' && !e.ctrlKey) generateAudio();
   });
 
   input.addEventListener('input', () => {
@@ -303,7 +299,7 @@
     audio.currentTime = 0;
   });
 
-  // Echo Bot v2 (Day 7): record -> transcribe -> Murf TTS -> play Murf voice
+  // Echo Bot: record -> send to /llm/query -> play Murf voice from LLM answer
   let mediaRecorder, audioChunks = [];
   const startBtn = document.getElementById('start-record');
   const stopBtn = document.getElementById('stop-record');
@@ -313,7 +309,6 @@
 
   function startRecording() {
     echoStatus.textContent = '';
-    echoStatus.className = 'status';
     echoTranscript.textContent = '';
     echoAudio.hidden = true;
     echoAudio.src = '';
@@ -329,57 +324,49 @@
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
 
-        echoStatus.textContent = "Transcribing and generating Murf voice...";
+        echoStatus.textContent = "Thinking and speaking via AI...";
         echoStatus.classList.remove('success', 'error');
         echoTranscript.textContent = '';
-        echoTranscript.classList.remove('error','success');
 
-        // Send audio to backend for transcription AND Murf voice (Day 7)
         const formData = new FormData();
-        const fileName = `echo_${Date.now()}.webm`;
+        const fileName = `llm_query_${Date.now()}.webm`;
         formData.append('file', audioBlob, fileName);
-        fetch('/tts/echo', {
-          method: 'POST',
-          body: formData
-        })
-        .then(r => r.json())
-        .then(res => {
-          if (res.audioUrl) {
-            echoAudio.src = res.audioUrl;
-            echoAudio.hidden = false;
-            echoAudio.load();
-            echoAudio.play();
-            echoStatus.textContent = "Echoed in Murf voice!";
-            echoStatus.classList.remove('error');
-            echoStatus.classList.add('success');
-            if (res.transcript)
-              echoTranscript.textContent = `Transcript: "${res.transcript}"`;
-            else
+
+        fetch('/llm/query', { method: 'POST', body: formData })
+          .then(r => r.json())
+          .then(res => {
+            if (Array.isArray(res.audioUrls) && res.audioUrls.length > 0) {
+              // If there's only one audio chunk, play it.
+              echoAudio.src = res.audioUrls[0];
+              echoAudio.hidden = false;
+              echoAudio.load();
+              echoAudio.play();
+              echoStatus.textContent = "AI responded!";
+              echoStatus.classList.remove('error');
+              echoStatus.classList.add('success');
+              echoTranscript.textContent =
+                `You said: "${res.transcript || ''}"\n\nAI said: "${res.llmText || ''}"`;
+              echoTranscript.classList.remove('error');
+              echoTranscript.classList.add('success');
+            } else {
+              echoStatus.textContent = "Failed to get AI voice.";
+              echoStatus.classList.remove('success');
+              echoStatus.classList.add('error');
               echoTranscript.textContent = "";
-            echoTranscript.classList.remove('error');
-            echoTranscript.classList.add('success');
-          } else {
-            echoStatus.textContent = "Failed to generate Murf echo!";
+            }
+          })
+          .catch(() => {
+            echoStatus.textContent = "Error contacting AI.";
             echoStatus.classList.remove('success');
             echoStatus.classList.add('error');
             echoTranscript.textContent = "";
-          }
-        })
-        .catch(() => {
-          echoStatus.textContent = "Echo Murf voice failed!";
-          echoStatus.classList.remove('success');
-          echoStatus.classList.add('error');
-          echoTranscript.textContent = "";
-        });
+          });
       };
       mediaRecorder.start();
       startBtn.disabled = true;
       stopBtn.disabled = false;
       echoStatus.textContent = "Recording...";
-      echoStatus.classList.remove('error','success');
-      echoTranscript.textContent = '';
-      echoTranscript.classList.remove('error','success');
-    }).catch(err => {
+    }).catch(() => {
       echoStatus.textContent = "Microphone access denied.";
       echoStatus.classList.add('error');
     });
@@ -390,10 +377,7 @@
       mediaRecorder.stop();
       startBtn.disabled = false;
       stopBtn.disabled = true;
-      echoStatus.textContent = "Processing with Murf voice...";
-      echoStatus.classList.remove('success');
-      echoStatus.classList.remove('error');
-      echoTranscript.textContent = "";
+      echoStatus.textContent = "Processing with AI...";
     }
   }
 </script>

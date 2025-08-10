@@ -6,23 +6,21 @@ from pydantic import BaseModel
 import requests
 from dotenv import load_dotenv
 
-import assemblyai as aai   # pip install assemblyai
+import assemblyai as aai  # pip install assemblyai
 import google.generativeai as genai  # pip install google-generativeai
+from typing import List
 
 # Load environment variables
 load_dotenv()
 
-# API Keys
 MURF_API_KEY = os.getenv("MURF_API_KEY")
 MURF_API_URL = "https://api.murf.ai/v1/speech/generate-with-key"
 ASSEMBLYAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Prepare uploads dir
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# FastAPI app
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -33,9 +31,6 @@ async def root():
 # ---------- MODELS ----------
 class TextRequest(BaseModel):
     text: str
-
-class LLMQuery(BaseModel):
-    prompt: str
 
 # ---------- ENDPOINTS ----------
 
@@ -53,7 +48,6 @@ def generate_audio(body: TextRequest):
     }
     try:
         response = requests.post(MURF_API_URL, headers=headers, json=payload)
-        print("Murf API Response:", response.status_code, response.text)
         if response.status_code == 200:
             result = response.json()
             audio_url = (
@@ -69,7 +63,6 @@ def generate_audio(body: TextRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
 
-
 @app.post("/upload-audio")
 async def upload_audio(file: UploadFile = File(...)):
     file_location = os.path.join(UPLOAD_DIR, file.filename)
@@ -81,7 +74,6 @@ async def upload_audio(file: UploadFile = File(...)):
         "content_type": file.content_type,
         "size": len(content)
     }
-
 
 @app.post("/transcribe/file")
 async def transcribe_file(file: UploadFile = File(...)):
@@ -97,8 +89,6 @@ async def transcribe_file(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Transcription failed: {e}")
 
-
-# ----------- DAY 7: Echo Bot v2 endpoint -----------
 @app.post("/tts/echo")
 async def echo_tts(file: UploadFile = File(...)):
     if not ASSEMBLYAI_API_KEY:
@@ -113,7 +103,6 @@ async def echo_tts(file: UploadFile = File(...)):
             raise HTTPException(status_code=400, detail="No speech recognized to echo.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Transcription failed: {e}")
-
     if not MURF_API_KEY:
         raise HTTPException(status_code=500, detail="Murf API key not set in environment.")
     try:
@@ -145,18 +134,73 @@ async def echo_tts(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Murf synthesis failed: {e}")
 
-
-# ----------- DAY 8: LLM Query endpoint -----------
+# ----------- DAY 9: LLM Full Pipeline endpoint -----------
 @app.post("/llm/query")
-def llm_query(body: LLMQuery):
+async def llm_audio_query(file: UploadFile = File(...)):
+    # 1. Transcribe the uploaded audio
+    if not ASSEMBLYAI_API_KEY:
+        raise HTTPException(status_code=500, detail="AssemblyAI API key not set in environment.")
+    try:
+        audio_bytes = await file.read()
+        aai.settings.api_key = ASSEMBLYAI_API_KEY
+        transcriber = aai.Transcriber()
+        transcript = transcriber.transcribe(audio_bytes)
+        prompt = transcript.text.strip() if transcript.text else ""
+        if not prompt:
+            raise HTTPException(status_code=400, detail="No speech recognized in audio.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {e}")
+
+    # 2. LLM response from Gemini
     if not GEMINI_API_KEY:
         raise HTTPException(status_code=500, detail="Gemini API key not set in environment.")
     try:
         genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-1.5-flash")  # Fast & good for short responses
-        response = model.generate_content(body.prompt)
-        return {"response": response.text}
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        llm_response = model.generate_content(prompt)
+        llm_text = llm_response.text.strip() if hasattr(llm_response, 'text') else str(llm_response)
+        if not llm_text:
+            raise HTTPException(status_code=500, detail="No response from LLM.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"LLM query failed: {e}")
 
-
+    # 3. Murf TTS for LLM response (<=3,000 chars per call)
+    if not MURF_API_KEY:
+        raise HTTPException(status_code=500, detail="Murf API key not set in environment.")
+    limit = 3000
+    chunks: List[str] = [llm_text[i:i+limit] for i in range(0, len(llm_text), limit)]
+    audio_urls = []
+    try:
+        for chunk in chunks:
+            payload = {
+                "voiceId": "en-US-natalie",
+                "text": chunk,
+                "format": "MP3"
+            }
+            headers = {
+                "api-key": MURF_API_KEY,
+                "Content-Type": "application/json"
+            }
+            response = requests.post(MURF_API_URL, headers=headers, json=payload)
+            if response.status_code == 200:
+                result = response.json()
+                audio_url = (
+                    result.get("audioUrl") or
+                    result.get("audioFile") or
+                    result.get("audio_url")
+                )
+                if not audio_url:
+                    raise HTTPException(status_code=500, detail="Murf audio URL missing in response.")
+                audio_urls.append(audio_url)
+            else:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Murf API error: {response.text}"
+                )
+        return {
+            "audioUrls": audio_urls,
+            "transcript": prompt,
+            "llmText": llm_text
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Murf synthesis failed: {e}")
