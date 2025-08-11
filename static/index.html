@@ -202,184 +202,136 @@
   <div class="glass-card" role="main" aria-label="Voice Agent and Echo Bot">
     <div class="greeting" id="greeting"></div>
     <h2>AI LLM Voice Agent & Echo Bot v2</h2>
+
+    <!-- TTS Section -->
     <div class="input-row">
-      <input id="tts-input" type="text" aria-label="Text to speak" placeholder="Type something to speak..." autocomplete="off" maxlength="240" />
-      <button id="tts-btn" onclick="generateAudio()" aria-label="Generate speech (Ctrl+Enter)" title="Speak (Ctrl+Enter)">Speak</button>
+      <input id="tts-input" type="text" placeholder="Type something to speak..." maxlength="240" />
+      <button id="tts-btn" onclick="generateAudio()">Speak</button>
     </div>
     <div id="status" class="status"></div>
     <div class="spinner" id="spinner"></div>
     <div class="audio-controls">
-      <audio id="audio-player" controls hidden aria-label="TTS audio output"></audio>
+      <audio id="audio-player" controls hidden></audio>
     </div>
-    <!-- Echo Bot Section -->
+
+    <!-- Conversation Section -->
     <div class="echo-section">
-      <h1>AI LLM Voice Bot</h1>
+      <h1>AI Conversation</h1>
       <div class="echo-btn-row">
-        <button id="start-record" onclick="startRecording()" aria-label="Start voice recording" title="Start voice recording">Start Recording</button>
-        <button id="stop-record" onclick="stopRecording()" disabled aria-label="Stop and playback" title="Stop recording and playback">Stop Recording</button>
+        <button id="start-record" onclick="startRecording()">Start Recording</button>
+        <button id="stop-record" onclick="stopRecording()" disabled>Stop Recording</button>
       </div>
       <div id="echo-status" class="status"></div>
       <div id="echo-transcript" class="status"></div>
       <div class="echo-controls">
-        <audio id="echo-audio" controls hidden aria-label="Echo playback"></audio>
+        <audio id="echo-audio" controls hidden></audio>
       </div>
     </div>
   </div>
 
 <script>
-  // Dynamic greeting
-  const greetingMsg = () => {
-    const hr = new Date().getHours();
-    if (hr < 12) return "Good morning, Voice Explorer! 🌞";
-    if (hr < 18) return "Good afternoon, Voice Explorer! ☀️";
-    return "Good evening, Voice Explorer! 🌙";
-  };
-  document.getElementById('greeting').textContent = greetingMsg();
+// === Greeting ===
+document.getElementById('greeting').textContent = (()=> {
+  const hr = new Date().getHours();
+  if(hr<12) return "Good morning, Voice Explorer! 🌞";
+  if(hr<18) return "Good afternoon, Voice Explorer! ☀️";
+  return "Good evening, Voice Explorer! 🌙";
+})();
 
-  // TTS section
-  const input = document.getElementById('tts-input');
-  const btn = document.getElementById('tts-btn');
-  const status = document.getElementById('status');
-  const audio = document.getElementById('audio-player');
-  const spinner = document.getElementById('spinner');
-
-  function setLoading(v) {
-    spinner.classList.toggle('active', v);
-    btn.disabled = v;
+// === Session ID in URL ===
+function getSessionId(){
+  const params=new URLSearchParams(window.location.search);
+  let sid=params.get('session');
+  if(!sid){
+    sid=Math.random().toString(36).substring(2,12);
+    params.set('session', sid);
+    window.location.search=params.toString();
   }
+  return sid;
+}
+const sessionId=getSessionId();
 
-  async function generateAudio() {
-    const text = input.value.trim();
-    audio.hidden = true;
-    status.textContent = '';
-    status.className = 'status';
-    if (!text) {
-      status.textContent = 'Please enter some text.';
-      status.classList.add('error');
-      return;
-    }
-    setLoading(true);
-    status.textContent = 'Generating audio...';
-    try {
-      const response = await fetch('/generate-audio', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text })
-      });
-      const data = await response.json();
-      if (data.audioUrl) {
-        audio.src = data.audioUrl;
-        audio.hidden = false;
-        audio.load();
-        audio.play();
-        status.textContent = 'Audio ready!';
-        status.classList.add('success');
+// === TTS (unchanged) ===
+const input=document.getElementById('tts-input');
+const btn=document.getElementById('tts-btn');
+const status=document.getElementById('status');
+const audio=document.getElementById('audio-player');
+const spinner=document.getElementById('spinner');
+
+function setLoading(v){spinner.classList.toggle('active', v); btn.disabled=v;}
+
+async function generateAudio(){
+  const text=input.value.trim();
+  audio.hidden=true;
+  status.textContent='';
+  if(!text){status.textContent='Please enter some text.';status.classList.add('error');return;}
+  setLoading(true);status.textContent='Generating audio...';
+  try{
+    const res=await fetch('/generate-audio',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+    const data=await res.json();
+    if(data.audioUrl){audio.src=data.audioUrl;audio.hidden=false;audio.load();audio.play();status.textContent='Audio ready!';status.classList.add('success');}
+    else{status.textContent='Failed to generate audio.';status.classList.add('error');}
+  }catch(e){status.textContent='Network or server error.';status.classList.add('error');}
+  finally{setLoading(false);}
+}
+
+// === Conversation Bot ===
+let mediaRecorder,audioChunks=[];
+const startBtn=document.getElementById('start-record');
+const stopBtn=document.getElementById('stop-record');
+const echoStatus=document.getElementById('echo-status');
+const echoAudio=document.getElementById('echo-audio');
+const echoTranscript=document.getElementById('echo-transcript');
+
+function startRecording(){
+  echoStatus.textContent=''; echoTranscript.textContent='';
+  echoAudio.hidden=true; echoAudio.src='';
+  if(!navigator.mediaDevices){echoStatus.textContent="Browser doesn't support audio recording.";echoStatus.classList.add('error');return;}
+  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+    mediaRecorder=new MediaRecorder(stream);
+    audioChunks=[];
+    mediaRecorder.ondataavailable=e=>audioChunks.push(e.data);
+    mediaRecorder.onstop=()=>{
+      const audioBlob=new Blob(audioChunks,{type:'audio/webm'});
+      sendToAgent(audioBlob);
+    };
+    mediaRecorder.start();
+    startBtn.disabled=true; stopBtn.disabled=false;
+    echoStatus.textContent="Recording...";
+  }).catch(()=>{echoStatus.textContent="Microphone access denied.";echoStatus.classList.add('error');});
+}
+
+function stopRecording(){
+  if(mediaRecorder && mediaRecorder.state==="recording"){
+    mediaRecorder.stop();
+    startBtn.disabled=false; stopBtn.disabled=true;
+    echoStatus.textContent="Processing with AI...";
+  }
+}
+
+function sendToAgent(audioBlob){
+  echoStatus.textContent="Thinking and responding...";
+  echoTranscript.textContent='';
+  const formData=new FormData();
+  formData.append('file',audioBlob,`agent_${Date.now()}.webm`);
+  fetch(`/agent/chat/${sessionId}`,{method:'POST',body:formData})
+    .then(r=>r.json())
+    .then(res=>{
+      if(res.audioUrls && res.audioUrls.length>0){
+        echoAudio.src=res.audioUrls[0];
+        echoAudio.hidden=false; echoAudio.load(); echoAudio.play();
+        echoStatus.textContent="AI responded!";echoStatus.classList.add('success');
+        echoTranscript.textContent=`You: ${res.transcript}\nAI: ${res.llmText}`;
+        echoTranscript.classList.add('success');
+        // Auto-restart recording for hands-free conversation
+        echoAudio.onended=()=>setTimeout(()=>startRecording(),500);
       } else {
-        status.textContent = 'Sorry, failed to generate an audio URL.';
-        status.classList.add('error');
+        echoStatus.textContent="No audio reply."; echoStatus.classList.add('error');
       }
-    } catch (err) {
-      status.textContent = 'Network or server error.';
-      status.classList.add('error');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  input.addEventListener('keydown', e => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') generateAudio();
-    if (e.key === 'Enter' && !e.ctrlKey) generateAudio();
-  });
-
-  input.addEventListener('input', () => {
-    status.textContent = '';
-    status.className = 'status';
-    audio.hidden = true;
-    audio.pause();
-    audio.currentTime = 0;
-  });
-
-  // Echo Bot: record -> send to /llm/query -> play Murf voice from LLM answer
-  let mediaRecorder, audioChunks = [];
-  const startBtn = document.getElementById('start-record');
-  const stopBtn = document.getElementById('stop-record');
-  const echoStatus = document.getElementById('echo-status');
-  const echoAudio = document.getElementById('echo-audio');
-  const echoTranscript = document.getElementById('echo-transcript');
-
-  function startRecording() {
-    echoStatus.textContent = '';
-    echoTranscript.textContent = '';
-    echoAudio.hidden = true;
-    echoAudio.src = '';
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      echoStatus.textContent = "Your browser doesn't support audio recording.";
-      echoStatus.classList.add('error');
-      return;
-    }
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-      mediaRecorder = new MediaRecorder(stream);
-      audioChunks = [];
-      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-
-        echoStatus.textContent = "Thinking and speaking via AI...";
-        echoStatus.classList.remove('success', 'error');
-        echoTranscript.textContent = '';
-
-        const formData = new FormData();
-        const fileName = `llm_query_${Date.now()}.webm`;
-        formData.append('file', audioBlob, fileName);
-
-        fetch('/llm/query', { method: 'POST', body: formData })
-          .then(r => r.json())
-          .then(res => {
-            if (Array.isArray(res.audioUrls) && res.audioUrls.length > 0) {
-              // If there's only one audio chunk, play it.
-              echoAudio.src = res.audioUrls[0];
-              echoAudio.hidden = false;
-              echoAudio.load();
-              echoAudio.play();
-              echoStatus.textContent = "AI responded!";
-              echoStatus.classList.remove('error');
-              echoStatus.classList.add('success');
-              echoTranscript.textContent =
-                `You said: "${res.transcript || ''}"\n\nAI said: "${res.llmText || ''}"`;
-              echoTranscript.classList.remove('error');
-              echoTranscript.classList.add('success');
-            } else {
-              echoStatus.textContent = "Failed to get AI voice.";
-              echoStatus.classList.remove('success');
-              echoStatus.classList.add('error');
-              echoTranscript.textContent = "";
-            }
-          })
-          .catch(() => {
-            echoStatus.textContent = "Error contacting AI.";
-            echoStatus.classList.remove('success');
-            echoStatus.classList.add('error');
-            echoTranscript.textContent = "";
-          });
-      };
-      mediaRecorder.start();
-      startBtn.disabled = true;
-      stopBtn.disabled = false;
-      echoStatus.textContent = "Recording...";
-    }).catch(() => {
-      echoStatus.textContent = "Microphone access denied.";
-      echoStatus.classList.add('error');
+    }).catch(()=>{
+      echoStatus.textContent="Error contacting AI."; echoStatus.classList.add('error');
     });
-  }
-
-  function stopRecording() {
-    if (mediaRecorder && mediaRecorder.state === "recording") {
-      mediaRecorder.stop();
-      startBtn.disabled = false;
-      stopBtn.disabled = true;
-      echoStatus.textContent = "Processing with AI...";
-    }
-  }
+}
 </script>
 </body>
 </html>
