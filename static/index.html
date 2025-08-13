@@ -3,14 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>AI LLM Voice Agent & Echo Bot v2</title>
+<title>🎙 AI Voice Chat</title>
 <style>
+  /* Original background from your code */
   body {
     min-height: 100vh;
     margin: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    display: flex; justify-content: center; align-items: center;
     font-family: 'Segoe UI', Arial, sans-serif;
     background:
       linear-gradient(120deg, rgba(25,8,49,0.72) 0%, rgba(34,28,62,0.70) 100%),
@@ -18,224 +17,285 @@
     background-size: cover;
     color: #fafbfc;
   }
-  .glass-card {
-    background: rgba(24, 19, 50, 0.65);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: 26px;
-    box-shadow: 0 4px 64px 0 #0ff1ff77, 0 1.5px 13px #971be930;
-    padding: 2.8rem 1.9rem 2rem 1.9rem;
-    max-width: 500px;
-    width: 95vw;
-    margin: 24px auto;
+
+  /* Glassmorphic card with vibrant content styling */
+  .card {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-radius: 25px;
+    padding: 2.5rem 3rem;
+    width: 90%;
+    max-width: 480px;
     display: flex;
     flex-direction: column;
-    gap: 2rem;
-    border: 1.5px solid rgba(52, 5, 99, 0.16);
+    align-items: center;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   }
-  .greeting {
-    font-size: 1.17rem;
-    font-weight: 500;
-    color: #7de7f7;
-    text-shadow: 0 2px 10px #3de0ff50;
-    text-align: center;
-  }
-  h2 {
-    text-align: center;
-    color: #e7b8fe;
+
+  h1 {
     font-weight: 700;
-    font-size: 1.5rem;
-    text-shadow: 0 2px 12px #c472fc99;
+    font-size: 1.8rem;
+    margin-bottom: 1.5rem;
+    color: #e0d6ff;
+    text-shadow: 0 0 10px #9b6cff88;
   }
-  .input-row {
-    display: flex;
-    gap: 0.7rem;
-  }
-  input[type="text"] {
-    flex: 1;
-    font-size: 1rem;
-    border: 1.5px solid #5935ba;
-    padding: 0.9rem 1rem;
-    border-radius: 14px;
-    background: rgba(44,42,72,0.32);
-    color: #f6f5ff;
-  }
-  button {
-    background: linear-gradient(90deg, #16c7ff 30%, #a460f9 90%);
-    color: #fff;
-    border: none;
-    font-weight: 600;
-    border-radius: 12px;
-    cursor: pointer;
-  }
-  .status { text-align: center; min-height: 1.3em; font-weight: 500; }
-  .status.error { color: #ff91b8; }
-  .status.success { color: #59ecc5; }
-  .spinner { display: none; }
+
+  /* Chat history container */
   .chat-history {
-    max-height: 200px;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 15px;
+    width: 100%;
+    height: 250px;
     overflow-y: auto;
-    background: rgba(255,255,255,0.05);
-    padding: 10px;
-    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.15);
     display: flex;
     flex-direction: column;
   }
+
+  /* Chat bubbles */
   .bubble {
-    padding: 6px 10px;
-    border-radius: 8px;
-    margin: 4px 0;
-    max-width: 85%;
+    padding: 10px 14px;
+    border-radius: 20px;
+    margin: 6px 0;
+    max-width: 75%;
+    word-wrap: break-word;
+    font-size: 1rem;
+    line-height: 1.3;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    transition: background-color 0.3s ease;
   }
-  .user { background: rgba(0,255,255,0.15); align-self: flex-end; }
-  .ai { background: rgba(160,100,255,0.15); align-self: flex-start; }
+
+  .user {
+    background: linear-gradient(135deg, #00f0ffcc, #00b4ffcc);
+    color: #fff;
+    align-self: flex-end;
+    text-align: right;
+    text-shadow: 0 1px 4px #005f70cc;
+  }
+
+  .ai {
+    background: linear-gradient(135deg, #c770f7cc, #6a4affcc);
+    color: #fff;
+    align-self: flex-start;
+    text-align: left;
+    text-shadow: 0 1px 4px #3c0077cc;
+  }
+
+  /* Record button styling */
+  #record-btn {
+    margin-top: 1.6rem;
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    border: none;
+    font-size: 1.25rem;
+    font-weight: 700;
+    cursor: pointer;
+    color: #fff;
+    background: linear-gradient(140deg, #ff0044, #ff77a9);
+    box-shadow:
+      0 0 15px 2px #ff44a2aa,
+      0 0 40px 6px #ff44a2aa,
+      inset 0 0 15px 2px #ff77aacc;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+
+  #record-btn:hover:not(.recording) {
+    transform: scale(1.08);
+    box-shadow:
+      0 0 20px 3px #ff66badc,
+      0 0 50px 8px #ff66badc,
+      inset 0 0 20px 4px #ff99bbdd;
+  }
+
+  /* Pulsing animation when recording */
+  #record-btn.recording {
+    animation: pulseGlow 1.4s infinite;
+    box-shadow:
+      0 0 20px 6px #ff2288ee,
+      0 0 60px 15px #ff2288cc,
+      inset 0 0 25px 4px #ff5599ff;
+    transform: scale(1.1);
+  }
+
+  @keyframes pulseGlow {
+    0% {
+      box-shadow:
+        0 0 20px 6px #ff2288ee,
+        0 0 60px 15px #ff2288cc,
+        inset 0 0 25px 4px #ff5599ff;
+      transform: scale(1.1);
+    }
+    50% {
+      box-shadow:
+        0 0 30px 10px #ff5588ff,
+        0 0 80px 20px #ff5588bb,
+        inset 0 0 35px 6px #ff7799ff;
+      transform: scale(1.15);
+    }
+    100% {
+      box-shadow:
+        0 0 20px 6px #ff2288ee,
+        0 0 60px 15px #ff2288cc,
+        inset 0 0 25px 4px #ff5599ff;
+      transform: scale(1.1);
+    }
+  }
+
+  /* Status messages */
+  .status {
+    margin-top: 1rem;
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    user-select: none;
+    min-height: 1.4em;
+  }
+  .status.visible {
+    opacity: 1;
+  }
+  .status.error {
+    color: #ff6e91;
+    text-shadow: 0 0 8px #ff6e91bb;
+  }
+  .status.success {
+    color: #34f5a5;
+    text-shadow: 0 0 8px #34f5a5bb;
+  }
 </style>
 </head>
 <body>
-<div class="glass-card">
-  <div class="greeting" id="greeting"></div>
-  <h2>AI LLM Voice Agent & Echo Bot v2</h2>
-
-  <!-- TTS Section -->
-  <div class="input-row">
-    <input id="tts-input" type="text" placeholder="Type something to speak..." maxlength="240" />
-    <button id="tts-btn" onclick="generateAudio()">Speak</button>
+  <div class="card" role="main" aria-label="AI Voice Chat Interface">
+    <h1>🎙 AI Voice Chat</h1>
+    <div id="chat-history" class="chat-history" aria-live="polite" aria-atomic="false" tabindex="0"></div>
+    <button id="record-btn" aria-pressed="false" aria-label="Start recording" onclick="toggleRecording()">🎤 Start</button>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+    <audio id="reply-audio" hidden></audio>
   </div>
-  <div id="status" class="status"></div>
-  <div class="spinner" id="spinner"></div>
-  <div>
-    <audio id="audio-player" controls hidden></audio>
-  </div>
-
-  <!-- Conversation Section -->
-  <div class="echo-section">
-    <h1>AI Conversation</h1>
-    <div id="chat-history" class="chat-history"></div>
-    <div class="echo-btn-row">
-      <button id="start-record" onclick="startRecording()">Start Recording</button>
-      <button id="stop-record" onclick="stopRecording()" disabled>Stop Recording</button>
-    </div>
-    <div id="echo-status" class="status"></div>
-    <div>
-      <audio id="echo-audio" controls hidden></audio>
-    </div>
-  </div>
-</div>
 
 <script>
-// Greeting
-document.getElementById('greeting').textContent = (() => {
-  const hr = new Date().getHours();
-  if (hr < 12) return "Good morning, Voice Explorer! 🌞";
-  if (hr < 18) return "Good afternoon, Voice Explorer! ☀️";
-  return "Good evening, Voice Explorer! 🌙";
-})();
+  // Manage session ID via URL params for chat continuity
+  let sessionId;
+  (function getSessionId() {
+    const params = new URLSearchParams(window.location.search);
+    let sid = params.get('session');
+    if (!sid) {
+      sid = Math.random().toString(36).substring(2, 12);
+      params.set('session', sid);
+      window.history.replaceState({}, "", `${location.pathname}?${params.toString()}`);
+    }
+    sessionId = sid;
+  })();
 
-// Session ID in URL
-function getSessionId(){
-  const params = new URLSearchParams(window.location.search);
-  let sid = params.get('session');
-  if(!sid){
-    sid = Math.random().toString(36).substring(2,12);
-    params.set('session', sid);
-    window.location.search = params.toString();
-  }
-  return sid;
-}
-const sessionId = getSessionId();
-
-// TTS
-const input = document.getElementById('tts-input');
-const btn = document.getElementById('tts-btn');
-const statusEl = document.getElementById('status');
-const audioEl = document.getElementById('audio-player');
-const spinner = document.getElementById('spinner');
-
-function setLoading(v){ spinner.style.display = v ? 'block' : 'none'; btn.disabled = v; }
-
-async function generateAudio(){
-  const text = input.value.trim();
-  audioEl.hidden = true;
-  statusEl.textContent = '';
-  if(!text){ statusEl.textContent = 'Please enter some text.'; statusEl.classList.add('error'); return;}
-  setLoading(true); statusEl.textContent = 'Generating audio...';
-  try{
-    const res = await fetch('/generate-audio',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
-    const data = await res.json();
-    if(data.audioUrl){
-      audioEl.src = data.audioUrl; audioEl.hidden=false; audioEl.load(); audioEl.play();
-      statusEl.textContent='Audio ready!'; statusEl.classList.add('success');
-    } else { statusEl.textContent='Failed to generate audio.'; statusEl.classList.add('error'); }
-  }catch(e){ statusEl.textContent='Network or server error.'; statusEl.classList.add('error'); }
-  finally{ setLoading(false); }
-}
-
-// Conversation Bot
-let mediaRecorder, audioChunks=[];
-const startBtn = document.getElementById('start-record');
-const stopBtn = document.getElementById('stop-record');
-const echoStatus = document.getElementById('echo-status');
-const echoAudio = document.getElementById('echo-audio');
-
-function renderChat(history){
   const chatDiv = document.getElementById('chat-history');
-  chatDiv.innerHTML = '';
-  history.forEach(msg => {
-    const div = document.createElement('div');
-    div.className = 'bubble ' + (msg.role === 'user' ? 'user' : 'ai');
-    div.textContent = `${msg.role === 'user' ? '🧑 You' : '🤖 AI'}: ${msg.content || ''}`;
-    chatDiv.appendChild(div);
-  });
-  chatDiv.scrollTop = chatDiv.scrollHeight;
-}
+  const statusEl = document.getElementById('status');
+  const recordBtn = document.getElementById('record-btn');
+  const replyAudio = document.getElementById('reply-audio');
 
-function startRecording(){
-  echoStatus.textContent = '';
-  echoAudio.hidden = true; echoAudio.src = '';
-  if (!navigator.mediaDevices){
-    echoStatus.textContent = "Browser doesn't support audio recording."; echoStatus.classList.add('error'); return;
+  // Render chat history in bubbles
+  function renderChat(history) {
+    chatDiv.innerHTML = '';
+    history.forEach(msg => {
+      const div = document.createElement('div');
+      div.className = 'bubble ' + (msg.role === 'user' ? 'user' : 'ai');
+      div.textContent = `${msg.role === 'user' ? '🧑 You' : '🤖 AI'}: ${msg.content || ''}`;
+      chatDiv.appendChild(div);
+    });
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+    chatDiv.focus();
   }
-  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
-    mediaRecorder = new MediaRecorder(stream);
-    audioChunks=[];
-    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-    mediaRecorder.onstop = () => { const audioBlob = new Blob(audioChunks,{type:'audio/webm'}); sendToAgent(audioBlob); };
-    mediaRecorder.start();
-    startBtn.disabled = true; stopBtn.disabled = false;
-    echoStatus.textContent = "Recording...";
-  }).catch(()=>{ echoStatus.textContent="Microphone access denied."; echoStatus.classList.add('error'); });
-}
 
-function stopRecording(){
-  if(mediaRecorder && mediaRecorder.state === "recording"){
-    mediaRecorder.stop();
-    startBtn.disabled = false; stopBtn.disabled = true;
-    echoStatus.textContent = "Processing with AI...";
+  // Set status message with fade-in/out
+  function setStatus(message, isError = false) {
+    statusEl.textContent = message;
+    statusEl.className = `status visible ${isError ? 'error' : 'success'}`;
+    setTimeout(() => {
+      statusEl.classList.remove('visible');
+    }, 4000);
   }
-}
 
-function sendToAgent(audioBlob){
-  echoStatus.textContent = "Thinking and responding...";
-  const formData = new FormData();
-  formData.append('file', audioBlob, `agent_${Date.now()}.webm`);
-  fetch(`/agent/chat/${sessionId}`,{method:'POST',body:formData})
-    .then(r=>r.json())
-    .then(res=>{
-      if(res.history) renderChat(res.history);
-      if(res.audioUrls && res.audioUrls.length>0){
-        echoAudio.src = res.audioUrls[0];
-        echoAudio.hidden = false; echoAudio.load(); echoAudio.play();
-      }
-      if(res.fallback){
-        echoStatus.textContent = `⚠️ Fallback: ${res.llmText}`;
-        echoStatus.classList.add('error');
-      } else {
-        echoStatus.textContent = "AI responded!"; echoStatus.classList.add('success');
-      }
-      echoAudio.onended = () => setTimeout(()=>startRecording(),500);
-    })
-    .catch(()=>{ echoStatus.textContent = "Error contacting AI."; echoStatus.classList.add('error'); });
-}
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let isRecording = false;
+
+  function toggleRecording() {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  }
+
+  function startRecording() {
+    if (!navigator.mediaDevices) {
+      setStatus("Browser doesn't support recording.", true);
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        sendToAgent(audioBlob);
+      };
+      mediaRecorder.start();
+      isRecording = true;
+      updateRecordBtn(true);
+      setStatus("Recording...", false);
+    }).catch(() => {
+      setStatus("Microphone access denied.", true);
+    });
+  }
+
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state === "recording") {
+      mediaRecorder.stop();
+      isRecording = false;
+      updateRecordBtn(false);
+      setStatus("Processing...", false);
+    }
+  }
+
+  function updateRecordBtn(recording) {
+    if (recording) {
+      recordBtn.textContent = "⏹ Stop";
+      recordBtn.classList.add('recording');
+      recordBtn.setAttribute('aria-pressed', 'true');
+      recordBtn.setAttribute('aria-label', 'Stop recording');
+    } else {
+      recordBtn.textContent = "🎤 Start";
+      recordBtn.classList.remove('recording');
+      recordBtn.setAttribute('aria-pressed', 'false');
+      recordBtn.setAttribute('aria-label', 'Start recording');
+    }
+  }
+
+  function sendToAgent(audioBlob) {
+    const formData = new FormData();
+    formData.append('file', audioBlob, `agent_${Date.now()}.webm`);
+    fetch(`/agent/chat/${sessionId}`, { method: 'POST', body: formData })
+      .then(response => response.json())
+      .then(data => {
+        if (data.history) renderChat(data.history);
+        if (data.audioUrls && data.audioUrls.length > 0) {
+          replyAudio.src = data.audioUrls[0];
+          replyAudio.hidden = true;
+          replyAudio.load();
+          replyAudio.play();
+        }
+        if (data.fallback) {
+          setStatus(`⚠️ ${data.llmText}`, true);
+        } else {
+          setStatus("AI responded!", false);
+        }
+      })
+      .catch(() => {
+        setStatus("Error contacting AI.", true);
+      });
+  }
 </script>
 </body>
 </html>

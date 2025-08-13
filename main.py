@@ -21,18 +21,16 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# In-memory chat history store
-chat_histories = {}  # {session_id: [ {"role": "...", "content": "..."} ]}
+# In-memory chat history
+chat_histories = {}
 
 FALLBACK_MESSAGE = "I'm having trouble connecting right now."
 
 def add_message(session_id: str, role: str, content: str):
-    """Always store 'content' as a string to avoid None issues."""
     if session_id not in chat_histories:
         chat_histories[session_id] = []
     chat_histories[session_id].append({
-        "role": role,
-        "content": content or ""
+        "role": role, "content": content or ""
     })
 
 def get_history(session_id: str):
@@ -52,7 +50,6 @@ def generate_fallback_response(session_id, transcript_hint, error_stage, error):
     except Exception as e:
         print(f"[ERROR] Fallback TTS failed: {e}")
 
-    # Ensure fallback messages are in history
     if transcript_hint:
         add_message(session_id, "user", transcript_hint)
     add_message(session_id, "assistant", FALLBACK_MESSAGE)
@@ -66,7 +63,6 @@ def generate_fallback_response(session_id, transcript_hint, error_stage, error):
         "errorStage": error_stage
     }
 
-# FastAPI app
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -74,33 +70,13 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 async def root():
     return FileResponse("static/index.html")
 
-class TextRequest(BaseModel):
-    text: str
-
-@app.post("/generate-audio")
-def generate_audio(body: TextRequest):
-    try:
-        payload = {"voiceId": "en-US-natalie", "text": body.text, "style": "Promo", "format": "MP3"}
-        headers = {"api-key": MURF_API_KEY, "Content-Type": "application/json"}
-        r = requests.post(MURF_API_URL, headers=headers, json=payload)
-        if r.status_code == 200:
-            result = r.json()
-            audio_url = result.get("audioUrl") or result.get("audioFile") or result.get("audio_url")
-            if not audio_url:
-                raise RuntimeError("Audio URL missing in Murf response")
-            return {"audioUrl": audio_url}
-        else:
-            raise RuntimeError(f"Murf API error: {r.text}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.post("/agent/chat/{session_id}")
 async def agent_chat(session_id: str, file: UploadFile = File(...)):
     transcript = ""
     llm_text = ""
     audio_urls = []
 
-    # Step 1 – STT
+    # Step 1: Speech-to-Text
     try:
         if not ASSEMBLYAI_API_KEY:
             raise RuntimeError("AssemblyAI key missing")
@@ -113,7 +89,7 @@ async def agent_chat(session_id: str, file: UploadFile = File(...)):
     except Exception as e:
         return generate_fallback_response(session_id, "", "STT", str(e))
 
-    # Step 2 – LLM
+    # Step 2: LLM
     try:
         add_message(session_id, "user", transcript)
         history = get_history(session_id)
@@ -131,7 +107,7 @@ async def agent_chat(session_id: str, file: UploadFile = File(...)):
     except Exception as e:
         return generate_fallback_response(session_id, transcript, "LLM", str(e))
 
-    # Step 3 – TTS
+    # Step 3: Text-to-Speech
     try:
         add_message(session_id, "assistant", llm_text)
         if not MURF_API_KEY:
