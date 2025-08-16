@@ -21,4 +21,3 @@ def generate_llm_response(history: list) -> str:
 
 
 
-    # ... rest of code
