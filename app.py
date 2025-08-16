@@ -4,6 +4,8 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
+
+from fastapi import FastAPI, WebSocket
 import logging
 
 
@@ -94,3 +96,9 @@ async def agent_chat(session_id: str, file: UploadFile = File(...)):
         history=history,
         fallback=False
     )
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    while True:
+        data = await websocket.receive_text()
+        await websocket.send_text(f"Echo: {data}")
