@@ -4,8 +4,7 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
-
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import logging
 
 
@@ -102,3 +101,16 @@ async def websocket_endpoint(websocket: WebSocket):
     while True:
         data = await websocket.receive_text()
         await websocket.send_text(f"Echo: {data}")
+
+@app.websocket("/ws/audio")
+async def websocket_audio_stream(websocket: WebSocket):
+    await websocket.accept()
+    with open("received_audio.raw", "wb") as audio_file:
+        while True:
+            message = await websocket.receive()
+            if message["type"] == "websocket.disconnect":
+                print("WebSocket disconnected; closing audio file.")
+                break
+            if "bytes" in message and message["bytes"] is not None:
+                audio_file.write(message["bytes"])
+                print(f"Wrote {len(message['bytes'])} bytes")
